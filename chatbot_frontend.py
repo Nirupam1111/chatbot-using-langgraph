@@ -37,18 +37,33 @@ add_thread(st.session_state["thread_id"])
 # Sidebar
 st.sidebar.title("niruGPT")
 if st.sidebar.button("New Chat"):
-    reset_chat()
+    if st.session_state["message_history"] != []:
+        flag = True
+        for thread_id in st.session_state["chat_threads"]:
+            state = chatbot.get_state(config={"configurable": {"thread_id": thread_id}})
+            if state.values == {}:
+                flag = False
+        if flag:
+            reset_chat()
 
 st.sidebar.header("My Conversations")
 for thread_id in st.session_state["chat_threads"][::-1]:
-    if st.sidebar.button(str(thread_id)):
+    state = chatbot.get_state(config={"configurable": {"thread_id": thread_id}})
+    if state.values == {}:
+        chat_title = "current chat"
+    else:
+        chat_title = state.values.get("messages")[0].content
+        chat_title = chat_title[0:35] + " ..."
+    
+    if st.sidebar.button(chat_title):
         st.session_state["thread_id"] = thread_id
         messages = load_conversation(thread_id)
 
         temp_messages = []
         for msg in messages:
-            role = "user" if isinstance(msg, HumanMessage) else "assistant"
-            temp_messages.append({"role": role, "content": msg.content})
+            if msg.content != '' and not isinstance(msg, ToolMessage):
+                role = "user" if isinstance(msg, HumanMessage) else "assistant"
+                temp_messages.append({"role": role, "content": msg.content})
         st.session_state["message_history"] = temp_messages
 
 # Render history
